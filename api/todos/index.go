@@ -54,11 +54,31 @@ func Index(w http.ResponseWriter, r *http.Request) {
 	case path == "" && r.Method == "GET":
 		getTodos(w, r)
 	case path == "" && r.Method == "POST":
-		createTodo(w, r)
-	case len(pathParts) == 2 && pathParts[1] == "toggle" && r.Method == "POST":
-		toggleTodo(w, r, pathParts[0])
-	case len(pathParts) == 1 && r.Method == "DELETE":
-		deleteTodo(w, r, pathParts[0])
+		// リクエストボディを確認して、actionフィールドがある場合はtoggleとして処理
+		var input struct {
+			Title  string `json:"title"`
+			ID     int    `json:"id"`
+			Action string `json:"action"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if input.Action == "toggle" {
+			toggleTodo(w, r, input.ID)
+		} else {
+			createTodo(w, r, input.Title)
+		}
+	case path == "" && r.Method == "DELETE":
+		var input struct {
+			ID int `json:"id"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		deleteTodo(w, r, input.ID)
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
@@ -83,24 +103,13 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 }
 
 // createTodo は新しいToDoを作成します。
-// POST /api/todos に対応します。
-func createTodo(w http.ResponseWriter, r *http.Request) {
-	// リクエストボディからデータを読み取り
-	var input struct {
-		Title string `json:"title"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
-	}
-
+func createTodo(w http.ResponseWriter, r *http.Request, title string) {
 	// 書き込み用のロックを取得
 	mutex.Lock()
 	// 新しいToDoを作成
 	todo := &Todo{
 		ID:        nextID,
-		Title:     input.Title,
+		Title:     title,
 		Completed: false,
 	}
 	todos[nextID] = todo
@@ -113,15 +122,7 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 }
 
 // toggleTodo はToDoの完了状態を切り替えます。
-// POST /api/todos/{id}/toggle に対応します。
-func toggleTodo(w http.ResponseWriter, r *http.Request, idStr string) {
-	// IDをパースする
-	id := 0
-	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
+func toggleTodo(w http.ResponseWriter, r *http.Request, id int) {
 	// 書き込み用のロックを取得
 	mutex.Lock()
 	defer mutex.Unlock()
@@ -137,15 +138,7 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, idStr string) {
 }
 
 // deleteTodo はToDoを削除します。
-// DELETE /api/todos/{id} に対応します。
-func deleteTodo(w http.ResponseWriter, r *http.Request, idStr string) {
-	// IDをパースする
-	id := 0
-	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
-		http.Error(w, "Invalid ID", http.StatusBadRequest)
-		return
-	}
-
+func deleteTodo(w http.ResponseWriter, r *http.Request, id int) {
 	// 書き込み用のロックを取得
 	mutex.Lock()
 	defer mutex.Unlock()

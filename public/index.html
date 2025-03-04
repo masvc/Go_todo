@@ -115,7 +115,7 @@
     </style>
 </head>
 <body>
-    <h1>シンプルToDoアプリ</h1>
+    <h1>Go言語で作成したToDoアプリ</h1>
 
     <!-- ToDo追加フォーム -->
     <form class="todo-form" id="todoForm">
@@ -186,8 +186,12 @@
         // ToDoの完了状態の切り替え
         async function toggleTodo(id) {
             try {
-                const response = await fetch(`${API_BASE_URL}/${id}/toggle`, {
+                const response = await fetch(`${API_BASE_URL}`, {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id, action: 'toggle' }),
                 });
                 const todo = await response.json();
                 updateTodoInList(todo);
@@ -199,8 +203,12 @@
         // ToDoの削除
         async function deleteTodo(id) {
             try {
-                await fetch(`${API_BASE_URL}/${id}`, {
+                await fetch(`${API_BASE_URL}`, {
                     method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id }),
                 });
                 removeTodoFromList(id);
             } catch (error) {
