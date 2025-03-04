@@ -1,3 +1,5 @@
+// Package handler はVercelのサーバーレス関数としてToDoアプリのバックエンドを実装します。
+// このパッケージでは、RESTful APIの原則に従ってToDo項目のCRUD操作を提供します。
 package handler
 
 import (
@@ -8,38 +10,46 @@ import (
 	"sync"
 )
 
-// Todo は1つのタスクを表す構造体です
+// Todo は1つのタスクを表す構造体です。
+// JSONタグを使用してJSONとの相互変換時のフィールド名を指定しています。
 type Todo struct {
-	ID        int    `json:"id"`
-	Title     string `json:"title"`
-	Completed bool   `json:"completed"`
+	ID        int    `json:"id"`        // タスクの一意識別子
+	Title     string `json:"title"`     // タスクのタイトル
+	Completed bool   `json:"completed"` // タスクの完了状態
 }
 
+// グローバル変数の定義
+// 注意: サーバーレス環境では関数呼び出し間でデータが保持されない可能性があります
 var (
-	todos  = make(map[int]*Todo)
-	nextID = 1
-	mutex  sync.RWMutex
+	todos  = make(map[int]*Todo) // ToDoリストを保持するマップ
+	nextID = 1                    // 次に割り当てるID
+	mutex  sync.RWMutex          // 同時アクセスを制御するためのミューテックス
 )
 
-// Handler はすべてのAPIリクエストを処理します
+// Handler はすべてのAPIリクエストを処理する関数です。
+// URLパスに基づいて適切な処理関数にルーティングします。
 func Handler(w http.ResponseWriter, r *http.Request) {
 	// CORSヘッダーの設定
+	// クロスオリジンリクエストを許可するために必要です
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	// プリフライトリクエストの処理
+	// ブラウザが送信するOPTIONSリクエストに対応します
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	// パスの解析
+	// URLパスの解析
+	// /api/todosプレフィックスを除去して実際のパスを取得します
 	path := strings.TrimPrefix(r.URL.Path, "/api/todos")
 	path = strings.TrimPrefix(path, "/")
 	pathParts := strings.Split(path, "/")
 
-	// ルーティング
+	// リクエストのルーティング
+	// パスとHTTPメソッドに基づいて適切なハンドラー関数を呼び出します
 	switch {
 	case path == "" && r.Method == "GET":
 		getTodos(w, r)
@@ -54,22 +64,28 @@ func Handler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// getTodos は全てのToDoを取得します
+// getTodos は全てのToDoを取得します。
+// GET /api/todos に対応します。
 func getTodos(w http.ResponseWriter, r *http.Request) {
+	// 読み取り用のロックを取得
 	mutex.RLock()
 	defer mutex.RUnlock()
 
+	// マップから配列に変換
 	todoList := make([]*Todo, 0, len(todos))
 	for _, todo := range todos {
 		todoList = append(todoList, todo)
 	}
 
+	// JSONとしてレスポンスを返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todoList)
 }
 
-// createTodo は新しいToDoを作成します
+// createTodo は新しいToDoを作成します。
+// POST /api/todos に対応します。
 func createTodo(w http.ResponseWriter, r *http.Request) {
+	// リクエストボディからデータを読み取り
 	var input struct {
 		Title string `json:"title"`
 	}
@@ -79,7 +95,9 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 書き込み用のロックを取得
 	mutex.Lock()
+	// 新しいToDoを作成
 	todo := &Todo{
 		ID:        nextID,
 		Title:     input.Title,
@@ -89,21 +107,26 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 	nextID++
 	mutex.Unlock()
 
+	// 作成したToDoをJSONとして返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
 }
 
-// toggleTodo はToDoの完了状態を切り替えます
+// toggleTodo はToDoの完了状態を切り替えます。
+// POST /api/todos/{id}/toggle に対応します。
 func toggleTodo(w http.ResponseWriter, r *http.Request, idStr string) {
+	// IDをパースする
 	id := 0
 	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
+	// 書き込み用のロックを取得
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	// ToDoの存在確認と状態の切り替え
 	if todo, exists := todos[id]; exists {
 		todo.Completed = !todo.Completed
 		w.Header().Set("Content-Type", "application/json")
@@ -113,17 +136,21 @@ func toggleTodo(w http.ResponseWriter, r *http.Request, idStr string) {
 	}
 }
 
-// deleteTodo はToDoを削除します
+// deleteTodo はToDoを削除します。
+// DELETE /api/todos/{id} に対応します。
 func deleteTodo(w http.ResponseWriter, r *http.Request, idStr string) {
+	// IDをパースする
 	id := 0
 	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
 		http.Error(w, "Invalid ID", http.StatusBadRequest)
 		return
 	}
 
+	// 書き込み用のロックを取得
 	mutex.Lock()
 	defer mutex.Unlock()
 
+	// ToDoの存在確認と削除
 	if _, exists := todos[id]; exists {
 		delete(todos, id)
 		w.WriteHeader(http.StatusOK)
