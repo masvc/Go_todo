@@ -1,0 +1,28 @@
+# バイナリファイル
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# テストバイナリ
+*.test
+
+# カバレッジファイル
+*.out
+
+# 依存関係ディレクトリ
+/vendor/
+
+# IDE設定
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# macOS固有のファイル
+.DS_Store
+
+# ビルド成果物
+/bin/
+/dist/ 
