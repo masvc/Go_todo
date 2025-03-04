@@ -4,7 +4,6 @@ package api
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -27,61 +26,66 @@ var (
 )
 
 // Index はすべてのAPIリクエストを処理する関数です。
-// URLパスに基づいて適切な処理関数にルーティングします。
 func Index(w http.ResponseWriter, r *http.Request) {
 	// CORSヘッダーの設定
-	// クロスオリジンリクエストを許可するために必要です
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 	// プリフライトリクエストの処理
-	// ブラウザが送信するOPTIONSリクエストに対応します
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
 	// URLパスの解析
-	// /api/todosプレフィックスを除去して実際のパスを取得します
 	path := strings.TrimPrefix(r.URL.Path, "/api/todos")
 	path = strings.TrimPrefix(path, "/")
-	pathParts := strings.Split(path, "/")
 
 	// リクエストのルーティング
-	// パスとHTTPメソッドに基づいて適切なハンドラー関数を呼び出します
 	switch {
 	case path == "" && r.Method == "GET":
 		getTodos(w, r)
 	case path == "" && r.Method == "POST":
-		// リクエストボディを確認して、actionフィールドがある場合はtoggleとして処理
-		var input struct {
-			Title  string `json:"title"`
-			ID     int    `json:"id"`
-			Action string `json:"action"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-
-		if input.Action == "toggle" {
-			toggleTodo(w, r, input.ID)
-		} else {
-			createTodo(w, r, input.Title)
-		}
+		handlePost(w, r)
 	case path == "" && r.Method == "DELETE":
-		var input struct {
-			ID int `json:"id"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		deleteTodo(w, r, input.ID)
+		handleDelete(w, r)
 	default:
 		http.Error(w, "Not found", http.StatusNotFound)
 	}
+}
+
+// handlePost はPOSTリクエストを処理します
+func handlePost(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		Title  string `json:"title"`
+		ID     int    `json:"id"`
+		Action string `json:"action"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if input.Action == "toggle" {
+		toggleTodo(w, r, input.ID)
+	} else if input.Title != "" {
+		createTodo(w, r, input.Title)
+	} else {
+		http.Error(w, "Invalid request", http.StatusBadRequest)
+	}
+}
+
+// handleDelete はDELETEリクエストを処理します
+func handleDelete(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		ID int `json:"id"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	deleteTodo(w, r, input.ID)
 }
 
 // getTodos は全てのToDoを取得します。

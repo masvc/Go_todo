@@ -1,12 +1,10 @@
 {
     "version": 2,
     "builds": [
-        { "src": "api/todos/*.go", "use": "@vercel/go" },
-        { "src": "public/**", "use": "@vercel/static" }
+        { "src": "api/todos/*.go", "use": "@vercel/go" }
     ],
     "routes": [
         { "src": "/api/todos", "dest": "/api/todos" },
-        { "src": "/api/todos/(.*)", "dest": "/api/todos" },
         { "src": "/(.*)", "dest": "/public/$1" }
     ]
 } 
