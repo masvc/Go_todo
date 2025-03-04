@@ -7,7 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
-	"./todo"
+	"go_todo/todo"
 )
 
 // グローバル変数の定義
