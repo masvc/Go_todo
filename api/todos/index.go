@@ -26,9 +26,9 @@ var (
 	mutex  sync.RWMutex          // 同時アクセスを制御するためのミューテックス
 )
 
-// Handler はすべてのAPIリクエストを処理する関数です。
+// Index はすべてのAPIリクエストを処理する関数です。
 // URLパスに基づいて適切な処理関数にルーティングします。
-func Handler(w http.ResponseWriter, r *http.Request) {
+func Index(w http.ResponseWriter, r *http.Request) {
 	// CORSヘッダーの設定
 	// クロスオリジンリクエストを許可するために必要です
 	w.Header().Set("Access-Control-Allow-Origin", "*")
