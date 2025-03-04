@@ -2,10 +2,13 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 )
 
+// Todo は1つのタスクを表す構造体です
 type Todo struct {
 	ID        int    `json:"id"`
 	Title     string `json:"title"`
@@ -18,28 +21,40 @@ var (
 	mutex  sync.RWMutex
 )
 
+// Handler はすべてのAPIリクエストを処理します
 func Handler(w http.ResponseWriter, r *http.Request) {
+	// CORSヘッダーの設定
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
+	// プリフライトリクエストの処理
 	if r.Method == "OPTIONS" {
 		w.WriteHeader(http.StatusOK)
 		return
 	}
 
-	switch r.Method {
-	case "GET":
+	// パスの解析
+	path := strings.TrimPrefix(r.URL.Path, "/api/todos")
+	path = strings.TrimPrefix(path, "/")
+	pathParts := strings.Split(path, "/")
+
+	// ルーティング
+	switch {
+	case path == "" && r.Method == "GET":
 		getTodos(w, r)
-	case "POST":
+	case path == "" && r.Method == "POST":
 		createTodo(w, r)
-	case "DELETE":
-		deleteTodo(w, r)
+	case len(pathParts) == 2 && pathParts[1] == "toggle" && r.Method == "POST":
+		toggleTodo(w, r, pathParts[0])
+	case len(pathParts) == 1 && r.Method == "DELETE":
+		deleteTodo(w, r, pathParts[0])
 	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		http.Error(w, "Not found", http.StatusNotFound)
 	}
 }
 
+// getTodos は全てのToDoを取得します
 func getTodos(w http.ResponseWriter, r *http.Request) {
 	mutex.RLock()
 	defer mutex.RUnlock()
@@ -49,9 +64,11 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 		todoList = append(todoList, todo)
 	}
 
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todoList)
 }
 
+// createTodo は新しいToDoを作成します
 func createTodo(w http.ResponseWriter, r *http.Request) {
 	var input struct {
 		Title string `json:"title"`
@@ -74,4 +91,43 @@ func createTodo(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
+}
+
+// toggleTodo はToDoの完了状態を切り替えます
+func toggleTodo(w http.ResponseWriter, r *http.Request, idStr string) {
+	id := 0
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if todo, exists := todos[id]; exists {
+		todo.Completed = !todo.Completed
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(todo)
+	} else {
+		http.Error(w, "Todo not found", http.StatusNotFound)
+	}
+}
+
+// deleteTodo はToDoを削除します
+func deleteTodo(w http.ResponseWriter, r *http.Request, idStr string) {
+	id := 0
+	if _, err := fmt.Sscanf(idStr, "%d", &id); err != nil {
+		http.Error(w, "Invalid ID", http.StatusBadRequest)
+		return
+	}
+
+	mutex.Lock()
+	defer mutex.Unlock()
+
+	if _, exists := todos[id]; exists {
+		delete(todos, id)
+		w.WriteHeader(http.StatusOK)
+	} else {
+		http.Error(w, "Todo not found", http.StatusNotFound)
+	}
 } 
