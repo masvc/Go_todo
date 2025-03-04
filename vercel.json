@@ -5,17 +5,7 @@
         { "src": "public/**", "use": "@vercel/static" }
     ],
     "routes": [
-        {
-            "src": "/api/todos",
-            "dest": "/api/todos/index"
-        },
-        {
-            "src": "/api/todos/(.*)",
-            "dest": "/api/todos/index"
-        },
-        {
-            "src": "/(.*)",
-            "dest": "/public/$1"
-        }
+        { "src": "/api/(.*)", "dest": "/api/$1" },
+        { "src": "/(.*)", "dest": "/public/$1" }
     ]
 } 
