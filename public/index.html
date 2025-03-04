@@ -45,17 +45,12 @@
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
-            transition: background-color 0.3s;
         }
 
         /* 追加ボタンのスタイル */
         .add-button {
             background-color: #4CAF50;
             color: white;
-        }
-
-        .add-button:hover {
-            background-color: #45a049;
         }
 
         /* ToDoリストのスタイル */
@@ -75,16 +70,6 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        /* 完了状態のスタイル */
-        .todo-item.completed {
-            background-color: #f8f8f8;
-        }
-
-        .todo-item.completed .todo-text {
-            text-decoration: line-through;
-            color: #888;
-        }
-
         /* ToDo項目のテキスト */
         .todo-text {
             flex: 1;
@@ -96,21 +81,6 @@
             background-color: #f44336;
             color: white;
             padding: 5px 10px;
-        }
-
-        .delete-button:hover {
-            background-color: #da190b;
-        }
-
-        /* トグルボタンのスタイル */
-        .toggle-button {
-            background-color: #2196F3;
-            color: white;
-            padding: 5px 10px;
-        }
-
-        .toggle-button:hover {
-            background-color: #0b7dda;
         }
     </style>
 </head>
@@ -183,27 +153,10 @@
             }
         }
 
-        // ToDoの完了状態の切り替え
-        async function toggleTodo(id) {
-            try {
-                const response = await fetch(`${API_BASE_URL}`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id, action: 'toggle' }),
-                });
-                const todo = await response.json();
-                updateTodoInList(todo);
-            } catch (error) {
-                console.error('ToDoの状態変更に失敗しました:', error);
-            }
-        }
-
         // ToDoの削除
         async function deleteTodo(id) {
             try {
-                await fetch(`${API_BASE_URL}`, {
+                await fetch(API_BASE_URL, {
                     method: 'DELETE',
                     headers: {
                         'Content-Type': 'application/json',
@@ -231,14 +184,8 @@
         // ToDo要素の作成
         function createTodoElement(todo) {
             const li = document.createElement('li');
-            li.className = `todo-item ${todo.completed ? 'completed' : ''}`;
+            li.className = 'todo-item';
             li.dataset.id = todo.id;
-
-            // トグルボタン
-            const toggleBtn = document.createElement('button');
-            toggleBtn.className = 'toggle-button';
-            toggleBtn.textContent = todo.completed ? '未完了' : '完了';
-            toggleBtn.onclick = () => toggleTodo(todo.id);
 
             // テキスト
             const span = document.createElement('span');
@@ -252,20 +199,10 @@
             deleteBtn.onclick = () => deleteTodo(todo.id);
 
             // 要素を組み立て
-            li.appendChild(toggleBtn);
             li.appendChild(span);
             li.appendChild(deleteBtn);
 
             return li;
-        }
-
-        // リスト内のToDo要素を更新
-        function updateTodoInList(todo) {
-            const li = todoList.querySelector(`li[data-id="${todo.id}"]`);
-            if (li) {
-                const newLi = createTodoElement(todo);
-                li.replaceWith(newLi);
-            }
         }
 
         // リストからToDo要素を削除
