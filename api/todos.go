@@ -1,6 +1,6 @@
-// Package handler はVercelのサーバーレス関数としてToDoアプリのバックエンドを実装します。
+// Package api はVercelのサーバーレス関数としてToDoアプリのバックエンドを実装します。
 // このパッケージでは、RESTful APIの原則に従ってToDo項目のCRUD操作を提供します。
-package handler
+package api
 
 import (
 	"encoding/json"
